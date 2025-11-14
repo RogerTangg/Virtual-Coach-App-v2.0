@@ -44,14 +44,56 @@ export function VideoPlayer({ exercise, isPlaying }: VideoPlayerProps) {
   embedUrl.searchParams.set('rel', '0'); // 不顯示相關影片
 
   return (
-    <div className="w-full aspect-video bg-black rounded-lg overflow-hidden shadow-lg">
+    <div style={{ 
+      position: 'relative',
+      width: '100%',
+      maxWidth: '1000px',
+      aspectRatio: '16/9',
+      borderRadius: '16px',
+      overflow: 'hidden',
+      boxShadow: '0 20px 60px rgba(0,0,0,0.5)'
+    }}>
+      {/* 影片 */}
       <iframe
         src={embedUrl.toString()}
         title={`${exercise.name} 教學影片`}
-        className="w-full h-full"
+        style={{ width: '100%', height: '100%', border: 'none' }}
         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
         allowFullScreen
       />
+      
+      {/* 頂部資訊覆蓋層 */}
+      <div style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        padding: '20px 24px',
+        background: 'linear-gradient(to bottom, rgba(0,0,0,0.7), transparent)',
+        color: '#FFFFFF',
+        fontSize: '20px',
+        fontWeight: 600
+      }}>
+        {exercise.name}
+      </div>
+      
+      {/* 底部說明覆蓋層 */}
+      {exercise.description && (
+        <div style={{
+          position: 'absolute',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          padding: '16px 24px',
+          background: 'rgba(200, 230, 201, 0.3)',
+          backdropFilter: 'blur(8px)',
+          color: '#FFFFFF',
+          fontSize: '14px',
+          lineHeight: 1.5
+        }}>
+          {exercise.description}
+        </div>
+      )}
     </div>
   );
 }

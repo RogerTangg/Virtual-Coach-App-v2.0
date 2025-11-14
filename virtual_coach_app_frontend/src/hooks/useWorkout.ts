@@ -48,11 +48,15 @@ export function useWorkout(): UseWorkoutReturn {
         setIsGenerating(true);
         setError(null);
 
+        console.log('開始生成訓練計畫:', { exerciseCount: exercises.length, preferences });
+
         // 模擬生成延遲（確保用戶看到載入狀態）
         await new Promise((resolve) => setTimeout(resolve, 500));
 
         // 呼叫生成演算法
         const plan = generateWorkoutPlan(exercises, preferences);
+        
+        console.log('訓練計畫生成成功:', { planId: plan.id, exerciseCount: plan.exercises.length });
         
         // 更新狀態
         setWorkoutPlan(plan);
@@ -60,8 +64,10 @@ export function useWorkout(): UseWorkoutReturn {
         // 儲存至 sessionStorage
         sessionStorage.setItem('workout_plan', JSON.stringify(plan));
       } catch (err) {
+        console.error('生成訓練計畫錯誤:', err);
         const errorMessage = handleError(err);
         setError(errorMessage);
+        throw err; // 重新拋出錯誤，讓 App.tsx 的 catch 可以捕獲
       } finally {
         setIsGenerating(false);
       }

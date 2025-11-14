@@ -1,5 +1,14 @@
-import { ExerciseCard } from './ExerciseCard';
-import { Button } from '../common/Button';
+/**
+ * WorkoutList Component (Redesigned)
+ * Displays workout plan with matcha green theme, WorkoutSummary, and action buttons
+ */
+
+import { useState } from 'react';
+import { Container, Stack, Button, Group, Paper, Text } from '@mantine/core';
+import { WorkoutCard } from './WorkoutCard';
+import { WorkoutSummary } from './WorkoutSummary';
+import { ConfirmDialog } from '../common/ConfirmDialog';
+import { matchaGreen } from '../../theme/colors';
 import type { WorkoutPlan } from '../../types/dataModel';
 
 /**
@@ -12,82 +21,166 @@ export interface WorkoutListProps {
 }
 
 /**
- * 訓練計畫列表組件
+ * 訓練計畫列表組件 (重新設計)
  * 
- * 顯示完整的訓練計畫，包含所有運動項目
+ * 整合 WorkoutSummary、垂直滾動卡片列表、操作按鈕區塊
  */
 export function WorkoutList({ workoutPlan, onStartTraining, onRegenerate }: WorkoutListProps) {
-  const { exercises, estimatedDurationMinutes } = workoutPlan;
+  const { exercises, estimatedDurationMinutes, preferences } = workoutPlan;
+  const [confirmDialogOpened, setConfirmDialogOpened] = useState(false);
+
+  // 計算難度
+  const difficulty = preferences.difficultyLevel;
+
+  const handleRegenerateClick = () => {
+    setConfirmDialogOpened(true);
+  };
+
+  const handleConfirmRegenerate = () => {
+    setConfirmDialogOpened(false);
+    if (onRegenerate) {
+      onRegenerate();
+    }
+  };
 
   return (
-    <div className="bg-white rounded-2xl shadow-xl p-8 max-w-4xl mx-auto">
-      {/* 標題與總結 */}
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">您的訓練計畫</h2>
-        <div className="flex items-center gap-4 text-sm text-gray-600">
-          <div className="flex items-center gap-1">
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-            </svg>
-            <span>預計時長：{estimatedDurationMinutes} 分鐘</span>
-          </div>
-          <div className="flex items-center gap-1">
-            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
-              <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
-            </svg>
-            <span>{exercises.length} 個運動項目</span>
-          </div>
+    <Container size="lg" px="md">
+      <Stack gap="xl">
+        {/* 標題 */}
+        <div>
+          <h2 style={{ fontSize: '28px', fontWeight: 'bold', color: '#1f2937', marginBottom: '8px' }}>
+            您的訓練計畫
+          </h2>
+          <p style={{ fontSize: '16px', color: '#6b7280', margin: 0 }}>
+            根據您的偏好客製化的訓練菜單
+          </p>
         </div>
-      </div>
 
-      {/* 運動列表 */}
-      <div className="space-y-4 mb-6">
-        {exercises.map((item, index) => (
-          <ExerciseCard key={index} item={item} index={index} />
-        ))}
-      </div>
+        {/* WorkoutSummary 摘要 */}
+        <WorkoutSummary
+          totalDurationMinutes={estimatedDurationMinutes}
+          exerciseCount={exercises.length}
+          difficulty={difficulty}
+        />
 
-      {/* 操作按鈕 */}
-      <div className="flex gap-4">
-        {onStartTraining && (
-          <Button
-            onClick={onStartTraining}
-            variant="primary"
-            size="lg"
-            className="flex-1"
-          >
-            開始訓練
-          </Button>
-        )}
-        {onRegenerate && (
-          <Button
-            onClick={onRegenerate}
-            variant="outline"
-            size="lg"
-            className="flex-1"
-          >
-            重新生成
-          </Button>
-        )}
-      </div>
-
-      {/* 提示訊息 */}
-      <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-        <div className="flex items-start gap-3">
-          <svg className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-          </svg>
-          <div className="text-sm text-blue-700">
-            <p className="font-medium mb-1">訓練小提示</p>
-            <ul className="list-disc list-inside space-y-1 text-blue-600">
-              <li>訓練前請先做暖身運動</li>
-              <li>注意動作正確性，避免受傷</li>
-              <li>依照自己的身體狀況調整強度</li>
-            </ul>
-          </div>
+        {/* 運動卡片列表 - 垂直滾動 */}
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px',
+            maxHeight: 'none',
+            overflowY: 'visible',
+            paddingRight: '8px',
+            paddingBottom: '16px',
+          }}
+        >
+          {exercises.map((item, index) => (
+            <WorkoutCard key={index} item={item} index={index} />
+          ))}
         </div>
-      </div>
-    </div>
+
+        {/* 操作按鈕區塊 */}
+        <div
+          style={{
+            position: 'sticky',
+            bottom: 0,
+            backgroundColor: 'white',
+            padding: '16px 0',
+            borderTop: `2px solid ${matchaGreen[100]}`,
+          }}
+        >
+          <Group gap="md" grow>
+            {onStartTraining && (
+              <Button
+                onClick={onStartTraining}
+                size="lg"
+                style={{
+                  backgroundColor: matchaGreen[500],
+                  color: 'white',
+                  height: '56px',
+                  fontSize: '16px',
+                  fontWeight: 600,
+                  borderRadius: '12px',
+                }}
+                styles={{
+                  root: {
+                    '&:hover': {
+                      backgroundColor: matchaGreen[600],
+                    },
+                  },
+                }}
+              >
+                開始訓練
+              </Button>
+            )}
+            {onRegenerate && (
+              <Button
+                onClick={handleRegenerateClick}
+                size="lg"
+                variant="outline"
+                style={{
+                  borderColor: matchaGreen[500],
+                  color: matchaGreen[600],
+                  height: '56px',
+                  fontSize: '16px',
+                  fontWeight: 600,
+                  borderRadius: '12px',
+                  borderWidth: '2px',
+                }}
+              >
+                重新生成
+              </Button>
+            )}
+          </Group>
+        </div>
+
+        {/* 確認對話框 */}
+        <ConfirmDialog
+          opened={confirmDialogOpened}
+          onClose={() => setConfirmDialogOpened(false)}
+          onConfirm={handleConfirmRegenerate}
+          title="重新生成訓練計畫"
+          message="確定要重新生成訓練計畫嗎？目前的計畫將會被清除。"
+          confirmLabel="確定重新生成"
+          cancelLabel="取消"
+        />
+
+        {/* 提示訊息 - 淡綠色主題 */}
+        <Paper
+          p="md"
+          radius="md"
+          style={{
+            backgroundColor: matchaGreen[50],
+            border: `1px solid ${matchaGreen[200]}`,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'start', gap: '12px' }}>
+            <svg
+              style={{ width: '20px', height: '20px', color: matchaGreen[600], flexShrink: 0, marginTop: '2px' }}
+              fill="currentColor"
+              viewBox="0 0 20 20"
+            >
+              <path
+                fillRule="evenodd"
+                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
+                clipRule="evenodd"
+              />
+            </svg>
+            <div>
+              <Text size="sm" fw={600} c={matchaGreen[800]} mb={4}>
+                訓練小提示
+              </Text>
+              <ul style={{ fontSize: '14px', color: matchaGreen[700], margin: 0, paddingLeft: '20px' }}>
+                <li>訓練前請先做 5-10 分鐘暖身運動</li>
+                <li>注意動作正確性，避免受傷</li>
+                <li>依照自己的身體狀況調整強度</li>
+                <li>運動後記得做伸展放鬆</li>
+              </ul>
+            </div>
+          </div>
+        </Paper>
+      </Stack>
+    </Container>
   );
 }

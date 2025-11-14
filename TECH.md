@@ -66,4 +66,4 @@
 | **資料庫** | PostgreSQL | Supabase Cloud | **免費** | **零** (服務由 Supabase 託管) |
 | **CMS** | Supabase UI | Supabase Cloud | **免費** | **零** (服務由 Supabase 託管) |
 
-這個架構讓你們（開發者）可以 100% 專注於打造前端 React 應用程式的功能 (Epic 2, 3, 4)，而將所有「後端雜事」(Epic 1 的伺服器、資料庫、API、CMS 維護) **完全外包**給 Supabase，並透過 Render 實現零成本的自動化部署。
+這個架構讓你們（開發者）可以 100% 專注於打造前端 React 應用程式的功能 (Epic 2, 3, 4)，而將所有「後端雜事」(Epic 1 的伺服器、資料庫、API、CMS 維護) **完全外包**給 Supabase，並透過 Render 實現零成本的自動化部署。 

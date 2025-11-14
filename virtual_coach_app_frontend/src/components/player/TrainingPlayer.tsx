@@ -87,57 +87,88 @@ export function TrainingPlayer({ workoutPlan, onExit }: TrainingPlayerProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-4">
-      {/* 標題列 */}
-      <div className="max-w-4xl mx-auto mb-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">
+    <div style={{
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #E8F5E9 0%, #C8E6C9 30%, #A5D6A7 60%, #81C784 100%)',
+      color: '#1B5E20',
+      padding: 0,
+      position: 'relative',
+      overflow: 'hidden'
+    }}>
+      {/* 頂部運動資訊覆蓋層 */}
+      <div style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        padding: '24px 32px',
+        background: 'linear-gradient(to bottom, rgba(129, 199, 132, 0.8), transparent)',
+        zIndex: 10
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ fontSize: '18px', fontWeight: 700, color: '#1B5E20' }}>
             運動 {player.currentExerciseIndex + 1} / {player.totalExercises}
-          </h1>
-          <span className="text-gray-400 text-sm">
+          </div>
+          <div style={{ fontSize: '14px', fontWeight: 600, color: '#2E7D32' }}>
             {workoutPlan.preferences.trainingGoal}
-          </span>
+          </div>
         </div>
       </div>
 
-      {/* 主要內容區 */}
-      <div className="max-w-4xl mx-auto space-y-6">
+      {/* 全螢幕內容區 */}
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        padding: '80px 32px 32px'
+      }}>
         {/* 影片播放器 */}
         <VideoPlayer
           exercise={player.currentExercise.exercise}
           isPlaying={player.isPlaying}
         />
 
-        {/* 運動資訊 */}
-        <div className="bg-gray-800 rounded-lg p-6">
-          <h2 className="text-3xl font-bold mb-4">
+        {/* 運動資訊 (白色卡片) */}
+        <div style={{
+          background: 'rgba(255, 255, 255, 0.95)',
+          borderRadius: '20px',
+          padding: '32px',
+          boxShadow: '0 8px 32px rgba(27, 94, 32, 0.2)',
+          border: '2px solid #81C784',
+          maxWidth: '800px',
+          width: '100%',
+          marginTop: '24px'
+        }}>
+          <h2 style={{ fontSize: '32px', fontWeight: 700, marginBottom: '24px', color: '#1B5E20' }}>
             {player.currentExercise.exercise.name}
           </h2>
-          <div className="flex gap-6 text-gray-300">
-            <div>
-              <span className="text-sm text-gray-400">組數</span>
-              <p className="text-xl font-semibold">{player.currentExercise.sets} 組</p>
+          <div style={{ display: 'flex', gap: '40px', justifyContent: 'center', marginBottom: '16px' }}>
+            <div style={{ textAlign: 'center' }}>
+              <span style={{ fontSize: '12px', color: '#757575', fontWeight: 600, textTransform: 'uppercase' }}>組數</span>
+              <p style={{ fontSize: '32px', fontWeight: 700, marginTop: '8px', color: '#66BB6A' }}>{player.currentExercise.sets}</p>
             </div>
-            <div>
-              <span className="text-sm text-gray-400">次數</span>
-              <p className="text-xl font-semibold">{player.currentExercise.reps} 次</p>
+            <div style={{ textAlign: 'center' }}>
+              <span style={{ fontSize: '12px', color: '#757575', fontWeight: 600, textTransform: 'uppercase' }}>次數</span>
+              <p style={{ fontSize: '32px', fontWeight: 700, marginTop: '8px', color: '#66BB6A' }}>{player.currentExercise.reps}</p>
             </div>
             {player.currentExercise.restSeconds > 0 && (
-              <div>
-                <span className="text-sm text-gray-400">休息</span>
-                <p className="text-xl font-semibold">{player.currentExercise.restSeconds} 秒</p>
+              <div style={{ textAlign: 'center' }}>
+                <span style={{ fontSize: '12px', color: '#757575', fontWeight: 600, textTransform: 'uppercase' }}>休息</span>
+                <p style={{ fontSize: '32px', fontWeight: 700, marginTop: '8px', color: '#66BB6A' }}>{player.currentExercise.restSeconds}s</p>
               </div>
             )}
           </div>
           {player.currentExercise.exercise.description && (
-            <p className="mt-4 text-gray-400 text-sm">
+            <p style={{ marginTop: '20px', color: '#616161', fontSize: '14px', lineHeight: 1.6, textAlign: 'center' }}>
               {player.currentExercise.exercise.description}
             </p>
           )}
         </div>
 
-        {/* 計時器 */}
-        <div className="bg-gray-800 rounded-lg p-6">
+        {/* 計時器 (透明背景) */}
+        <div style={{ marginTop: '48px' }}>
           <Timer
             remainingSeconds={player.remainingSeconds}
             totalSeconds={player.totalSeconds}
@@ -146,8 +177,8 @@ export function TrainingPlayer({ workoutPlan, onExit }: TrainingPlayerProps) {
           />
         </div>
 
-        {/* 控制按鈕 */}
-        <div className="bg-gray-800 rounded-lg p-6">
+        {/* 控制按鈕 (固定底部) */}
+        <div>
           <PlayerControls
             isPlaying={player.isPlaying}
             isPaused={player.isPaused}

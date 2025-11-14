@@ -70,7 +70,10 @@ function filterExercises(
   exercises: Exercise[],
   preferences: UserPreferences
 ): Exercise[] {
-  return exercises.filter((exercise) => {
+  console.log('開始篩選運動，總數:', exercises.length);
+  
+  // 先嘗試完全匹配
+  let filtered = exercises.filter((exercise) => {
     // 檢查難度等級是否匹配
     const difficultyMatch = exercise.difficulty_level === preferences.difficultyLevel;
 
@@ -87,6 +90,58 @@ function filterExercises(
 
     return difficultyMatch && muscleMatch && equipmentMatch;
   });
+
+  console.log('完全匹配結果:', filtered.length);
+
+  // 如果完全匹配結果不足，放寬難度條件（允許相鄰難度）
+  if (filtered.length < MIN_EXERCISES_COUNT) {
+    console.log('完全匹配不足，嘗試放寬難度條件...');
+    const allowedDifficulties = getAllowedDifficulties(preferences.difficultyLevel);
+    
+    filtered = exercises.filter((exercise) => {
+      const difficultyMatch = allowedDifficulties.includes(exercise.difficulty_level);
+      const muscleMatch = preferences.targetMuscles.includes(exercise.target_muscle);
+      
+      let equipmentMatch = true;
+      if (preferences.equipmentAvailable && preferences.equipmentAvailable.length > 0) {
+        if (exercise.equipment_needed) {
+          equipmentMatch = preferences.equipmentAvailable.includes(exercise.equipment_needed);
+        }
+      }
+
+      return difficultyMatch && muscleMatch && equipmentMatch;
+    });
+    
+    console.log('放寬難度後結果:', filtered.length);
+  }
+
+  // 如果還是不足，只匹配肌群
+  if (filtered.length < MIN_EXERCISES_COUNT) {
+    console.log('仍然不足，只匹配肌群...');
+    filtered = exercises.filter((exercise) => {
+      return preferences.targetMuscles.includes(exercise.target_muscle);
+    });
+    
+    console.log('只匹配肌群結果:', filtered.length);
+  }
+
+  return filtered;
+}
+
+/**
+ * 取得允許的難度等級（包含相鄰難度）
+ */
+function getAllowedDifficulties(targetDifficulty: string): string[] {
+  const difficultyLevels = ['beginner', 'intermediate', 'advanced'];
+  const index = difficultyLevels.indexOf(targetDifficulty);
+  
+  if (index === -1) return difficultyLevels;
+  
+  const allowed = [targetDifficulty];
+  if (index > 0) allowed.push(difficultyLevels[index - 1]); // 加入較簡單的
+  if (index < difficultyLevels.length - 1) allowed.push(difficultyLevels[index + 1]); // 加入較難的
+  
+  return allowed;
 }
 
 /**

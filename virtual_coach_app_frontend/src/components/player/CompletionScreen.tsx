@@ -17,58 +17,127 @@ export function CompletionScreen({
   onExit,
 }: CompletionScreenProps) {
   return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-gray-800 rounded-lg shadow-xl p-8 text-center">
-        {/* 成功圖示 */}
-        <div className="mb-6">
-          <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center mx-auto">
+    <div style={{
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #81C784 0%, #66BB6A 100%)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '32px'
+    }}>
+      <div style={{
+        maxWidth: '500px',
+        width: '100%',
+        background: '#FFFFFF',
+        borderRadius: '24px',
+        boxShadow: '0 30px 80px rgba(0,0,0,0.2)',
+        padding: '48px',
+        textAlign: 'center'
+      }}>
+        {/* 成功圖示 (大尺寸彈跳動畫) */}
+        <div style={{ marginBottom: '32px' }}>
+          <div style={{
+            width: '140px',
+            height: '140px',
+            background: '#66BB6A',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto',
+            animation: 'bounce 1s ease-in-out',
+            boxShadow: '0 10px 30px rgba(102, 187, 106, 0.4)'
+          }}>
             <svg
-              className="w-12 h-12 text-white"
+              width="80"
+              height="80"
               fill="none"
-              stroke="currentColor"
+              stroke="white"
               viewBox="0 0 24 24"
+              strokeWidth={3}
             >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                strokeWidth={3}
                 d="M5 13l4 4L19 7"
               />
             </svg>
           </div>
         </div>
+        <style>{`
+          @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+          }
+        `}</style>
 
         {/* 完成訊息 */}
-        <h1 className="text-3xl font-bold text-white mb-2">訓練完成!</h1>
-        <p className="text-gray-400 mb-8">恭喜你完成了今天的訓練</p>
+        <h1 style={{ fontSize: '40px', fontWeight: 700, color: '#2E7D32', marginBottom: '12px' }}>訓練完成!</h1>
+        <p style={{ fontSize: '16px', color: '#757575', marginBottom: '40px' }}>恭喜你完成了今天的訓練</p>
 
         {/* 統計資訊 */}
-        <div className="bg-gray-700 rounded-lg p-6 mb-8">
-          <div className="grid grid-cols-2 gap-4">
+        <div style={{
+          background: '#E8F5E9',
+          borderRadius: '16px',
+          padding: '32px',
+          marginBottom: '40px'
+        }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
             <div>
-              <p className="text-gray-400 text-sm mb-1">完成運動</p>
-              <p className="text-2xl font-bold text-white">{totalExercises}</p>
-              <p className="text-gray-400 text-xs">個項目</p>
+              <p style={{ fontSize: '14px', color: '#757575', marginBottom: '8px' }}>完成運動</p>
+              <p style={{ fontSize: '48px', fontWeight: 700, color: '#2E7D32' }}>{totalExercises}</p>
+              <p style={{ fontSize: '14px', color: '#757575' }}>個項目</p>
             </div>
             <div>
-              <p className="text-gray-400 text-sm mb-1">訓練時長</p>
-              <p className="text-2xl font-bold text-white">{totalDurationMinutes}</p>
-              <p className="text-gray-400 text-xs">分鐘</p>
+              <p style={{ fontSize: '14px', color: '#757575', marginBottom: '8px' }}>訓練時長</p>
+              <p style={{ fontSize: '48px', fontWeight: 700, color: '#2E7D32' }}>{totalDurationMinutes}</p>
+              <p style={{ fontSize: '14px', color: '#757575' }}>分鐘</p>
             </div>
           </div>
         </div>
 
         {/* 操作按鈕 */}
-        <div className="space-y-3">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <button
             onClick={onRestart}
-            className="w-full py-3 px-6 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium transition-colors"
+            style={{
+              width: '100%',
+              padding: '16px 32px',
+              borderRadius: '12px',
+              background: '#66BB6A',
+              color: '#FFFFFF',
+              fontSize: '16px',
+              fontWeight: 600,
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              boxShadow: '0 4px 12px rgba(102, 187, 106, 0.3)'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = '#4CAF50'}
+            onMouseLeave={(e) => e.currentTarget.style.background = '#66BB6A'}
           >
             再練一次
           </button>
           <button
             onClick={onExit}
-            className="w-full py-3 px-6 rounded-lg bg-gray-700 hover:bg-gray-600 text-white font-medium transition-colors"
+            style={{
+              width: '100%',
+              padding: '16px 32px',
+              borderRadius: '12px',
+              background: 'transparent',
+              color: '#2E7D32',
+              fontSize: '16px',
+              fontWeight: 600,
+              border: '2px solid #2E7D32',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#E8F5E9';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+            }}
           >
             返回首頁
           </button>
