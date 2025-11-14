@@ -31,11 +31,13 @@ function AppContent() {
   const handlePreferenceSubmit = async (preferences: UserPreferences) => {
     try {
       await generatePlan(preferences);
+      // Note: WorkoutList will automatically show when workoutPlan is not null
       setToast({
         type: 'success',
         message: '訓練計畫生成成功！',
       });
     } catch (error) {
+      console.error('生成訓練計畫失敗:', error);
       setToast({
         type: 'error',
         message: generationError || '生成訓練計畫時發生錯誤',
@@ -153,14 +155,14 @@ function AppContent() {
                 onRegenerate={handleRegenerate}
               />
             )}
-
-            {/* 生成中的載入狀態 */}
-            {isGenerating && (
-              <div className="mt-8">
-                <Loading size="md" message="正在生成您的專屬訓練計畫..." />
-              </div>
-            )}
           </main>
+
+          {/* 生成中的載入狀態 - 移到外層避免遮擋 */}
+          {isGenerating && !workoutPlan && (
+            <div className="mt-8 text-center">
+              <Loading size="md" message="正在生成您的專屬訓練計畫..." />
+            </div>
+          )}
         </>
       )}
 

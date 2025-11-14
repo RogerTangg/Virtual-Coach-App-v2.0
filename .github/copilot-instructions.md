@@ -3,6 +3,7 @@
 Auto-generated from all feature plans. Last updated: 2025-11-14
 
 ## Active Technologies
+- Supabase PostgreSQL (existing, no schema changes for UI redesign) (002-ui-redesign)
 
 - **Language**: JavaScript ES2022+ with TypeScript 5.8.3 (React 19.2.0)
 - **Frontend**: Vite 7.2.2, React 19.2.0, Tailwind CSS 3.4.20
@@ -35,6 +36,7 @@ npm test; npm run lint
 JavaScript ES2022+ (React 19.2.0): Follow standard conventions
 
 ## Recent Changes
+- 002-ui-redesign: Added JavaScript ES2022+ with TypeScript 5.8.3 (React 19.2.0)
 
 - 001-virtual-coach-mvp: Added JavaScript ES2022+ (React 19.2.0)
 
