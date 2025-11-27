@@ -151,6 +151,16 @@ export const resendVerificationEmail = async (email: string): Promise<void> => {
 };
 
 /**
+ * 帶 timeout 的 Promise 包裝器
+ */
+const withTimeout = <T>(promise: Promise<T>, timeoutMs: number, fallback: T): Promise<T> => {
+    return Promise.race([
+        promise,
+        new Promise<T>((resolve) => setTimeout(() => resolve(fallback), timeoutMs))
+    ]);
+};
+
+/**
  * 登入使用者 (Sign In)
  * 
  * @param credentials - 登入憑證 (Login credentials)
@@ -161,10 +171,19 @@ export const signIn = async (credentials: LoginCredentials): Promise<SignInResul
     try {
         const { email, password } = credentials;
 
-        const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({
+        // 登入請求加入 timeout（10 秒）
+        const authPromise = supabase.auth.signInWithPassword({
             email,
             password,
         });
+        
+        const authResult = await withTimeout(
+            authPromise,
+            10000,
+            { data: { user: null, session: null }, error: new Error('登入逾時，請檢查網路連線') }
+        );
+        
+        const { data: authData, error: signInError } = authResult;
 
         if (signInError) {
             // 檢查是否為 Email 未驗證錯誤（支援多種可能的錯誤訊息）
@@ -199,14 +218,20 @@ export const signIn = async (credentials: LoginCredentials): Promise<SignInResul
             };
         }
 
-        // 取得 user profile（允許失敗，不阻塞登入）
+        // 取得 user profile（帶 3 秒 timeout，允許失敗不阻塞登入）
         let profileData = null;
         try {
-            const { data, error: profileError } = await supabase
+            const profilePromise = supabase
                 .from('user_profiles')
                 .select('*')
                 .eq('id', authData.user.id)
-                .maybeSingle();  // 使用 maybeSingle 而非 single，避免找不到時報錯
+                .maybeSingle();
+            
+            const { data, error: profileError } = await withTimeout(
+                profilePromise,
+                3000,
+                { data: null, error: null }
+            );
 
             if (!profileError) {
                 profileData = data;
@@ -257,19 +282,31 @@ export const signOut = async (): Promise<void> => {
  */
 export const getCurrentUser = async (): Promise<UserProfile | null> => {
     try {
-        const { data: { user }, error } = await supabase.auth.getUser();
+        // getUser 加入 5 秒 timeout
+        const userPromise = supabase.auth.getUser();
+        const { data: { user }, error } = await withTimeout(
+            userPromise,
+            5000,
+            { data: { user: null }, error: null }
+        );
 
         if (error) throw error;
         if (!user) return null;
 
-        // 取得 user profile（允許失敗）
+        // 取得 user profile（帶 3 秒 timeout，允許失敗）
         let profileData = null;
         try {
-            const { data, error: profileError } = await supabase
+            const profilePromise = supabase
                 .from('user_profiles')
                 .select('*')
                 .eq('id', user.id)
                 .maybeSingle();
+            
+            const { data, error: profileError } = await withTimeout(
+                profilePromise,
+                3000,
+                { data: null, error: null }
+            );
 
             if (!profileError) {
                 profileData = data;
