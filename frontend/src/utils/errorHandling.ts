@@ -4,16 +4,30 @@
  * 提供應用程式級別的錯誤處理與使用者友善的錯誤訊息
  */
 
-// 身份驗證錯誤對照表
+// 身份驗證錯誤對照表 (Authentication Error Messages)
+// 包含 Supabase Auth 可能回傳的各種錯誤訊息
 export const AUTH_ERROR_MESSAGES: Record<string, string> = {
+  // 登入相關錯誤
   'Invalid login credentials': '帳號或密碼錯誤',
   'Email not confirmed': '請先驗證您的 Email',
   'User not found': '帳號不存在',
+  
+  // 註冊相關錯誤 - Supabase 可能回傳多種格式
   'Email already registered': '此 Email 已被註冊',
+  'User already registered': '此 Email 已被註冊，請直接登入',
+  'A user with this email address has already been registered': '此 Email 已被註冊，請直接登入',
+  'email address already registered': '此 Email 已被註冊，請直接登入',
+  
+  // 密碼相關錯誤
   'Password should be at least 6 characters': '密碼至少需要 6 個字元',
-  'User already registered': '使用者已註冊',
+  'Password is too short': '密碼至少需要 6 個字元',
+  
+  // 其他錯誤
   'Signups not allowed for this instance': '目前不開放註冊',
   'Invalid email': 'Email 格式不正確',
+  'Email rate limit exceeded': '操作過於頻繁，請稍後再試',
+  'For security purposes, you can only request this once every 60 seconds': '操作過於頻繁，請 60 秒後再試',
+  
   'default': '操作失敗，請稍後再試'
 };
 
@@ -34,7 +48,48 @@ export const NETWORK_ERROR_MESSAGES: Record<string, string> = {
  */
 export function sanitizeAuthError(error: any): string {
   const message = error?.message || '';
-  return AUTH_ERROR_MESSAGES[message] || AUTH_ERROR_MESSAGES.default;
+  const code = error?.code || '';
+  
+  // 優先檢查完全匹配
+  if (AUTH_ERROR_MESSAGES[message]) {
+    return AUTH_ERROR_MESSAGES[message];
+  }
+  
+  // 檢查是否包含關鍵字（處理 Supabase 回傳的各種格式）
+  const lowerMessage = message.toLowerCase();
+  
+  // 重複註冊相關
+  if (lowerMessage.includes('already registered') || 
+      lowerMessage.includes('already been registered') ||
+      lowerMessage.includes('already exists') ||
+      code === 'user_already_exists') {
+    return '此 Email 已被註冊，請直接登入';
+  }
+  
+  // Email 未驗證
+  if (lowerMessage.includes('email not confirmed') || 
+      lowerMessage.includes('not confirmed') ||
+      code === 'email_not_confirmed') {
+    return '請先驗證您的 Email';
+  }
+  
+  // 密碼太短
+  if (lowerMessage.includes('password') && 
+      (lowerMessage.includes('short') || lowerMessage.includes('6 characters'))) {
+    return '密碼至少需要 6 個字元';
+  }
+  
+  // 頻率限制
+  if (lowerMessage.includes('rate limit') || lowerMessage.includes('60 seconds')) {
+    return '操作過於頻繁，請稍後再試';
+  }
+  
+  // 無效憑證
+  if (lowerMessage.includes('invalid') && lowerMessage.includes('credentials')) {
+    return '帳號或密碼錯誤';
+  }
+  
+  return AUTH_ERROR_MESSAGES.default;
 }
 
 /**

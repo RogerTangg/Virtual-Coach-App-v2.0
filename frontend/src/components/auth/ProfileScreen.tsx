@@ -32,9 +32,10 @@ import {
 interface ProfileScreenProps {
     onBack: () => void;
     onHistoryClick?: () => void;
+    onLogout?: () => void; // 新增：登出後的導航回調
 }
 
-export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onHistoryClick }) => {
+export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onHistoryClick, onLogout }) => {
     const { user, setUser } = useAuth();
     const [displayName, setDisplayName] = useState(user?.display_name || '');
     const [isEditing, setIsEditing] = useState(false);
@@ -115,7 +116,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({ onBack, onHistoryC
         try {
             await signOut();
             setUser(null);
-            onBack();
+            // 登出後導航到首頁
+            if (onLogout) {
+                onLogout();
+            } else {
+                onBack();
+            }
         } catch (err: any) {
             setError(err.message || '登出失敗');
         }

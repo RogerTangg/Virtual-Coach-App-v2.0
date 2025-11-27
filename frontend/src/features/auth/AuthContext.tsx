@@ -5,10 +5,10 @@
  * 支援 Email 驗證回調處理
  */
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from 'react';
 import type { AuthState, UserProfile } from '@/types/auth';
 import { getCurrentUser, onAuthStateChange } from '@/services/authService';
-import { supabase } from '@/lib/supabase';
+import { supabase, startSessionRefresh } from '@/lib/supabase';
 
 // 定義 Context 型別
 interface AuthContextType extends AuthState {
@@ -47,12 +47,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const [isGuest, setIsGuest] = useState(false);
     const [isVerifying, setIsVerifying] = useState(false);
     const [verificationSuccess, setVerificationSuccess] = useState(false);
+    
+    // 🔧 修復：使用 ref 追蹤驗證狀態，避免閉包問題
+    const isVerifyingRef = useRef(false);
+    // 追蹤是否已經初始化，避免重複初始化
+    const isInitializedRef = useRef(false);
 
     /**
      * 重新載入使用者資訊 (Reload user information)
      * 加入 timeout 保護，避免卡住
      */
-    const reloadUser = async () => {
+    const reloadUser = useCallback(async () => {
         setIsLoading(true);
         try {
             // 使用 Promise.race 加入 8 秒 timeout
@@ -69,24 +74,33 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         } finally {
             setIsLoading(false);
         }
-    };
+    }, []);
 
     /**
      * 進入訪客模式 (Enter guest mode)
      */
-    const enterGuestMode = () => {
+    const enterGuestMode = useCallback(() => {
         setUser(null);
         setIsGuest(true);
         setIsLoading(false);
-    };
+    }, []);
 
     /**
      * 清除驗證狀態
      */
-    const clearVerificationStatus = () => {
+    const clearVerificationStatus = useCallback(() => {
         setVerificationSuccess(false);
         setIsVerifying(false);
-    };
+        isVerifyingRef.current = false;
+    }, []);
+
+    /**
+     * 設定驗證中狀態（同時更新 state 和 ref）
+     */
+    const setVerifyingState = useCallback((value: boolean) => {
+        setIsVerifying(value);
+        isVerifyingRef.current = value;
+    }, []);
 
     /**
      * 處理 Email 驗證回調
@@ -101,7 +115,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const accessToken = hashParams.get('access_token') || queryParams.get('access_token');
         const type = hashParams.get('type') || queryParams.get('type');
         const errorCode = hashParams.get('error') || queryParams.get('error');
-        const errorDescription = hashParams.get('error_description') || queryParams.get('error_description');
 
         // 檢查是否有錯誤
         if (errorCode) {
@@ -113,7 +126,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         // 檢查是否是驗證回調（signup 或 email_change）
         if (accessToken && (type === 'signup' || type === 'email_change' || type === 'recovery')) {
-            setIsVerifying(true);
+            setVerifyingState(true);
 
             try {
                 // 嘗試從 URL 設定 session
@@ -128,6 +141,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                     setUser(currentUser);
                     setIsGuest(false);
                     setVerificationSuccess(true);
+                    // 🔧 修復：驗證成功後開始 Session 刷新
+                    startSessionRefresh();
                 } else {
                     // 如果 session 不存在，嘗試用 token 設定
                     const refreshToken = hashParams.get('refresh_token') || queryParams.get('refresh_token');
@@ -142,6 +157,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                             setUser(currentUser);
                             setIsGuest(false);
                             setVerificationSuccess(true);
+                            startSessionRefresh();
                         }
                     }
                 }
@@ -149,9 +165,9 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 // 清除 URL 中的 hash 和 query 參數
                 window.history.replaceState(null, '', window.location.pathname);
             } catch {
-                // 驗證回調處理失敗，静默處理
+                // 驗證回調處理失敗，靜默處理
             } finally {
-                setIsVerifying(false);
+                setVerifyingState(false);
                 setIsLoading(false);
             }
         }
@@ -159,6 +175,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     // 初始化：載入使用者資訊並處理驗證回調
     useEffect(() => {
+        // 防止重複初始化
+        if (isInitializedRef.current) return;
+        isInitializedRef.current = true;
+        
         const init = async () => {
             // 先檢查是否有驗證回調（hash 或 query params）
             const hasVerificationParams = 
@@ -175,6 +195,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                     const { data: { session } } = await supabase.auth.getSession();
                     if (session?.user) {
                         console.log('從 localStorage 恢復 Session:', session.user.email);
+                        // 🔧 修復：恢復 Session 後立即開始刷新
+                        startSessionRefresh();
                     }
                 } catch (e) {
                     console.warn('恢復 Session 失敗:', e);
@@ -193,8 +215,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
         // 監聽身份驗證狀態變化（包括從其他 tab 登入、Token 刷新）
         const unsubscribe = onAuthStateChange((newUser) => {
-            // 只在非驗證狀態時更新
-            if (!isVerifying) {
+            // 🔧 修復：使用 ref 而非 state 來檢查驗證狀態，避免閉包問題
+            if (!isVerifyingRef.current) {
                 setUser(newUser);
                 setIsGuest(newUser === null);
                 setIsLoading(false);
@@ -204,7 +226,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return () => {
             unsubscribe();
         };
-    }, []);
+    }, [reloadUser]);
 
     const value: AuthContextType = {
         user,
