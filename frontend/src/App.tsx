@@ -7,10 +7,11 @@ import { CompletedScreen } from './components/player/CompletedScreen';
 import { LoginScreen } from './components/auth/LoginScreen';
 import { RegisterScreen } from './components/auth/RegisterScreen';
 import { ProfileScreen } from './components/auth/ProfileScreen';
+import { HistoryScreen } from './components/history/HistoryScreen';
 import { Button } from './components/ui/Button';
 import { ConfirmDialog } from './components/ui/ConfirmDialog';
 import { ToastContainer } from './components/ui/Toast';
-import { Dumbbell, User, LogIn, Loader2 } from 'lucide-react';
+import { Dumbbell, User, LogIn, Loader2, History } from 'lucide-react';
 import { generateWorkoutPlan } from './features/generator/engine';
 import { AuthProvider, useAuth } from './features/auth/AuthContext';
 import { useToast, useConfirmDialog } from './hooks/useDialog';
@@ -149,6 +150,7 @@ const AppContent = () => {
     const [currentScreen, setCurrentScreen] = useState<AppScreen>('home');
     const [preferences, setPreferences] = useState<UserPreferences | null>(null);
     const [workoutPlan, setWorkoutPlan] = useState<PlanItem[]>([]);
+    const [workoutStartedAt, setWorkoutStartedAt] = useState<string>('');
     const { enterGuestMode, isVerifying, verificationSuccess, clearVerificationStatus } = useAuth();
     
     // Custom dialog hooks
@@ -231,7 +233,17 @@ const AppContent = () => {
                 )}
 
                 {currentScreen === 'profile' && (
-                    <ProfileScreen onBack={() => setCurrentScreen('home')} />
+                    <ProfileScreen 
+                        onBack={() => setCurrentScreen('home')}
+                        onHistoryClick={() => setCurrentScreen('history')}
+                    />
+                )}
+
+                {currentScreen === 'history' && (
+                    <HistoryScreen
+                        onBack={() => setCurrentScreen('profile')}
+                        onStartWorkout={() => setCurrentScreen('setup')}
+                    />
                 )}
 
                 {currentScreen === 'setup' && (
@@ -249,7 +261,10 @@ const AppContent = () => {
                     <PlanOverviewScreen
                         plan={workoutPlan}
                         preferences={preferences}
-                        onStart={() => setCurrentScreen('workout')}
+                        onStart={() => {
+                            setWorkoutStartedAt(new Date().toISOString());
+                            setCurrentScreen('workout');
+                        }}
                         onBack={() => setCurrentScreen('setup')}
                     />
                 )}
@@ -265,7 +280,11 @@ const AppContent = () => {
                 {currentScreen === 'completed' && preferences && (
                     <CompletedScreen
                         durationMinutes={preferences.durationMinutes}
+                        plan={workoutPlan}
+                        preferences={preferences}
+                        startedAt={workoutStartedAt || new Date().toISOString()}
                         onHome={() => setCurrentScreen('home')}
+                        onHistory={() => setCurrentScreen('history')}
                     />
                 )}
             </main>

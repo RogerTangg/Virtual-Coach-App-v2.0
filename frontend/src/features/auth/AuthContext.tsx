@@ -50,11 +50,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     /**
      * 重新載入使用者資訊 (Reload user information)
+     * 加入 timeout 保護，避免卡住
      */
     const reloadUser = async () => {
         setIsLoading(true);
         try {
-            const currentUser = await getCurrentUser();
+            // 使用 Promise.race 加入 8 秒 timeout
+            const currentUser = await Promise.race([
+                getCurrentUser(),
+                new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000))
+            ]);
             setUser(currentUser);
             setIsGuest(currentUser === null);
         } catch (error) {
@@ -167,9 +172,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             } else {
                 await reloadUser();
             }
+            
+            // 確保 isLoading 一定會結束（防止極端情況）
+            setIsLoading(false);
         };
 
-        init();
+        init().catch(() => {
+            // 初始化失敗也要結束 loading 狀態
+            setIsLoading(false);
+        });
 
         // 監聯身份驗證狀態變化（包括從其他 tab 登入）
         const unsubscribe = onAuthStateChange((newUser) => {

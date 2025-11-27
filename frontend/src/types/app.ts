@@ -23,12 +23,14 @@ export interface UserPreferences {
  * 用於簡單的狀態路由 (MVP 不需複雜的 React Router)
  * 
  * Phase 2 新增: login, register, profile (身份驗證相關畫面)
+ * Phase 2 Module 3 新增: history (訓練歷史紀錄)
  */
 export type AppScreen =
   | 'home'
   | 'login'
   | 'register'
   | 'profile'
+  | 'history'
   | 'setup'
   | 'generating'
   | 'overview'
