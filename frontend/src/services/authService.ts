@@ -82,8 +82,17 @@ export const signUp = async (data: RegisterData): Promise<SignUpResult> => {
         if (signUpError) throw signUpError;
         if (!authData.user) throw new Error('註冊失敗：無法建立使用者');
 
+        // 🔧 修復：檢查是否為重複註冊
+        // Supabase 在已註冊且已驗證的帳號重新註冊時，會回傳 user 但 identities 為空陣列
+        // 需要檢測這種情況並提示使用者
+        const identities = authData.user.identities || [];
+        if (identities.length === 0) {
+            // 已經有相同 Email 的帳號存在
+            throw new Error('A user with this email address has already been registered');
+        }
+
         // 檢查是否需要 Email 驗證
-        // Supabase 會在 identities 為空陣列或 email_confirmed_at 為 null 時表示需要驗證
+        // Supabase 會在 email_confirmed_at 為 null 時表示需要驗證
         const needsEmailVerification = !authData.user.email_confirmed_at;
 
         if (needsEmailVerification) {

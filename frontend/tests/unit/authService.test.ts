@@ -6,12 +6,15 @@ vi.mock('@/lib/supabase', () => ({
     auth: {
       signUp: vi.fn(),
       signInWithPassword: vi.fn(),
-      signOut: vi.fn(),
+      signOut: vi.fn().mockResolvedValue({ error: null }), // 預設返回 Promise
       getUser: vi.fn(),
       onAuthStateChange: vi.fn(),
     },
     from: vi.fn(),
   },
+  isSupabaseConfigured: true,
+  startSessionRefresh: vi.fn(),
+  stopSessionRefresh: vi.fn(),
 }));
 
 // Mock errorHandling
@@ -36,6 +39,7 @@ describe('authService', () => {
         user_metadata: {},
         aud: 'authenticated',
         created_at: new Date().toISOString(),
+        identities: [{ id: 'identity-1' }], // 🔧 新增：有 identities 表示全新用戶
       };
 
       vi.mocked(supabase.auth.signUp).mockResolvedValue({
@@ -82,6 +86,31 @@ describe('authService', () => {
         })
       ).rejects.toThrow();
     });
+
+    it('應該在重複註冊時拋出錯誤（identities 為空）', async () => {
+      const { supabase } = await import('@/lib/supabase');
+      const { signUp } = await import('@/services/authService');
+
+      // 模擬 Supabase 返回空 identities（表示重複註冊）
+      const mockUser = {
+        id: 'user-123',
+        email: 'existing@example.com',
+        identities: [], // 空陣列表示已存在的用戶
+      };
+
+      vi.mocked(supabase.auth.signUp).mockResolvedValue({
+        data: { user: mockUser as any, session: null },
+        error: null,
+      });
+
+      await expect(
+        signUp({
+          email: 'existing@example.com',
+          password: 'password123',
+          confirmPassword: 'password123',
+        })
+      ).rejects.toThrow();
+    });
   });
 
   describe('signIn', () => {
@@ -92,6 +121,7 @@ describe('authService', () => {
       const mockUser = {
         id: 'user-123',
         email: 'test@example.com',
+        email_confirmed_at: new Date().toISOString(), // 🔧 新增：表示 Email 已驗證
         app_metadata: {},
         user_metadata: {},
         aud: 'authenticated',
@@ -106,7 +136,7 @@ describe('authService', () => {
       vi.mocked(supabase.from).mockReturnValue({
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({
+            maybeSingle: vi.fn().mockResolvedValue({
               data: { id: 'user-123', display_name: 'Test User' },
               error: null,
             }),
@@ -119,13 +149,14 @@ describe('authService', () => {
         password: 'password123',
       });
 
-      expect(result.email).toBe('test@example.com');
+      expect(result.success).toBe(true);
+      expect(result.user?.email).toBe('test@example.com');
     });
   });
 
   describe('signOut', () => {
     it('應該成功登出', async () => {
-      const { supabase } = await import('@/lib/supabase');
+      const { supabase, stopSessionRefresh } = await import('@/lib/supabase');
       const { signOut } = await import('@/services/authService');
 
       vi.mocked(supabase.auth.signOut).mockResolvedValue({
@@ -133,6 +164,7 @@ describe('authService', () => {
       });
 
       await expect(signOut()).resolves.not.toThrow();
+      expect(stopSessionRefresh).toHaveBeenCalled();
       expect(supabase.auth.signOut).toHaveBeenCalled();
     });
   });

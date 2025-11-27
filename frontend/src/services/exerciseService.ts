@@ -17,107 +17,87 @@ const withTimeout = <T>(promise: Promise<T>, timeoutMs: number): Promise<T> => {
   ]);
 };
 
-/**
- * 將資料庫欄位轉換為 tags 格式
- * 資料庫: target_muscles, training_goals, difficulty, equipment
- * App 期望: tags: ["goal:增肌", "difficulty:初階", "equipment:徒手"]
- */
-const convertDbToTags = (dbRow: any): string[] => {
-  const tags: string[] = [];
-
-  // 難度轉換
-  const difficultyMap: Record<string, string> = {
-    'beginner': '初階',
-    'intermediate': '中階',
-    'advanced': '高階'
-  };
-  if (dbRow.difficulty) {
-    tags.push(`difficulty:${difficultyMap[dbRow.difficulty] || dbRow.difficulty}`);
-  }
-
-  // 訓練目標轉換
-  const goalMap: Record<string, string> = {
-    'strength': '增肌',
-    'muscle_gain': '增肌',
-    'fat_loss': '減脂',
-    'endurance': '塑形'
-  };
-  if (Array.isArray(dbRow.training_goals)) {
-    dbRow.training_goals.forEach((goal: string) => {
-      const mapped = goalMap[goal] || goal;
-      if (!tags.includes(`goal:${mapped}`)) {
-        tags.push(`goal:${mapped}`);
-      }
-    });
-  }
-
-  // 器材轉換
-  if (Array.isArray(dbRow.equipment) && dbRow.equipment.length > 0) {
-    dbRow.equipment.forEach((eq: string) => {
-      tags.push(`equipment:${eq}`);
-    });
-  } else {
-    tags.push('equipment:徒手'); // 無器材 = 徒手
-  }
-
-  // 肌群轉換為類型
-  if (Array.isArray(dbRow.target_muscles)) {
-    if (dbRow.target_muscles.includes('core')) {
-      tags.push('type:核心');
-    } else if (dbRow.target_muscles.includes('full_body')) {
-      tags.push('type:有氧');
-    } else {
-      tags.push('type:肌力');
-    }
-  }
-
-  return tags;
-};
+// 快取變數：避免重複查詢
+let cachedExercises: Exercise[] | null = null;
+let cacheTimestamp: number = 0;
+const CACHE_TTL = 5 * 60 * 1000; // 5 分鐘快取
 
 /**
  * 獲取所有運動資料
  * 
- * 目前策略：直接使用模擬資料，確保 App 穩定運作
+ * 策略：
+ * 1. 先嘗試從 Supabase 查詢
+ * 2. 若查詢失敗或超時，使用模擬資料作為 fallback
+ * 3. 使用 5 分鐘快取減少 API 請求
  * 
- * TODO: 待 Supabase RLS 政策修復後，重新啟用資料庫查詢
- * 問題：exercises 表的 RLS 政策導致 anon 用戶查詢卡住（無回應）
- * 解決方案：在 Supabase Dashboard 執行以下 SQL：
+ * 資料庫表結構：
+ * - id (uuid), created_at, name, description, video_url, duration_seconds, tags (ARRAY)
  * 
- * DROP POLICY IF EXISTS "Allow public read access to active exercises" ON public.exercises;
- * CREATE POLICY "Allow anyone to read exercises" ON public.exercises FOR SELECT TO anon, authenticated USING (true);
+ * 注意：若 Supabase RLS 政策未正確設定，將自動使用模擬資料
+ * 請在 Supabase Dashboard 執行 database/fix_exercises_rls.sql 修復
  */
 export const getAllExercises = async (): Promise<Exercise[]> => {
-  // 暫時直接返回模擬資料，避免 RLS 問題導致請求卡住
-  // 當 Supabase RLS 修復後，將下面的 return 註解掉即可恢復資料庫查詢
-  return MOCK_EXERCISES;
+  // 檢查快取是否有效
+  const now = Date.now();
+  if (cachedExercises && (now - cacheTimestamp) < CACHE_TTL) {
+    return cachedExercises;
+  }
 
-  /* 資料庫查詢邏輯（RLS 修復後取消註解）
+  // 若 Supabase 未配置，直接使用模擬資料
+  if (!isSupabaseConfigured) {
+    console.warn('⚠️ Supabase 未配置，使用模擬資料');
+    return MOCK_EXERCISES;
+  }
+
   try {
-    if (!isSupabaseConfigured) {
-      return MOCK_EXERCISES;
-    }
-
+    // 嘗試從資料庫查詢（3 秒超時）
+    // 資料庫結構：id, created_at, name, description, video_url, duration_seconds, tags
     const { data, error } = await withTimeout(
-      supabase.from('exercises').select('*'),
+      supabase
+        .from('exercises')
+        .select('*'),
       3000
     );
 
-    if (error || !data || data.length === 0) {
+    if (error) {
+      console.warn('⚠️ 資料庫查詢失敗，使用模擬資料:', error.message);
       return MOCK_EXERCISES;
     }
 
-    return data.map((item: any) => ({
+    if (!data || data.length === 0) {
+      console.warn('⚠️ 資料庫無運動資料，使用模擬資料');
+      return MOCK_EXERCISES;
+    }
+
+    // 直接使用資料庫資料（tags 已是陣列格式）
+    const exercises = data.map((item: any) => ({
       id: item.id,
       created_at: item.created_at,
       name: item.name,
       description: item.description || '',
       video_url: item.video_url,
       duration_seconds: item.duration_seconds,
-      tags: convertDbToTags(item)
+      tags: Array.isArray(item.tags) ? item.tags : []
     }));
 
-  } catch {
+    cachedExercises = exercises;
+    cacheTimestamp = now;
+    console.log(`✅ 從資料庫載入 ${exercises.length} 個運動`);
+
+    return exercises;
+
+  } catch (error) {
+    // 超時或其他錯誤，使用模擬資料
+    console.warn('⚠️ 查詢超時或發生錯誤，使用模擬資料');
     return MOCK_EXERCISES;
   }
-  */
+};
+
+/**
+ * 清除運動資料快取
+ * 可在需要強制重新載入時呼叫
+ */
+export const clearExerciseCache = (): void => {
+  cachedExercises = null;
+  cacheTimestamp = 0;
 };

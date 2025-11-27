@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { AppScreen, UserPreferences, PlanItem } from './types/app';
 import { SetupScreen } from './components/setup/SetupScreen';
 import { PlanOverviewScreen } from './components/plan/PlanOverviewScreen';
@@ -12,10 +12,12 @@ import { DashboardScreen } from './components/dashboard/DashboardScreen';
 import { Button } from './components/ui/Button';
 import { ConfirmDialog } from './components/ui/ConfirmDialog';
 import { ToastContainer } from './components/ui/Toast';
+import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { Dumbbell, User, LogIn, Loader2, LayoutDashboard } from 'lucide-react';
 import { generateAIWorkoutPlan } from './services/aiGeneratorService';
 import { AuthProvider, useAuth } from './features/auth/AuthContext';
 import { useToast, useConfirmDialog } from './hooks/useDialog';
+import { useRouter, getBackScreen } from './hooks/useRouter';
 
 const Header = ({ 
     onProfileClick, 
@@ -170,7 +172,12 @@ const VerifyingScreen = () => (
 );
 
 const AppContent = () => {
-    const [currentScreen, setCurrentScreen] = useState<AppScreen>('home');
+    // 使用新的路由 Hook
+    const { currentScreen, navigate } = useRouter({
+        initialScreen: 'home',
+        enableHistory: true
+    });
+    
     const [preferences, setPreferences] = useState<UserPreferences | null>(null);
     const [workoutPlan, setWorkoutPlan] = useState<PlanItem[]>([]);
     const [workoutStartedAt, setWorkoutStartedAt] = useState<string>('');
@@ -187,16 +194,16 @@ const AppContent = () => {
         if (verificationSuccess) {
             toast.success('Email 驗證成功！歡迎加入 Virtual Fitness Coach 🎉');
             clearVerificationStatus();
-            setCurrentScreen('dashboard');
+            navigate('dashboard', { replace: true });
         }
-    }, [verificationSuccess, clearVerificationStatus, toast]);
+    }, [verificationSuccess, clearVerificationStatus, toast, navigate]);
 
     // 根據 PRD: 會員登入後自動導向儀表板（只在首次載入時）
     useEffect(() => {
         if (!isLoading && user && currentScreen === 'home') {
-            setCurrentScreen('dashboard');
+            navigate('dashboard', { replace: true });
         }
-    }, [isLoading, user]);
+    }, [isLoading, user, currentScreen, navigate]);
 
     // 如果正在驗證中，顯示載入畫面
     if (isVerifying) {
@@ -205,17 +212,17 @@ const AppContent = () => {
 
     const handleSetupComplete = async (prefs: UserPreferences) => {
         setPreferences(prefs);
-        setCurrentScreen('generating');
+        navigate('generating', { replace: true });
 
         try {
             await new Promise(resolve => setTimeout(resolve, 1500));
             const plan = await generateAIWorkoutPlan(prefs);
             setWorkoutPlan(plan);
-            setCurrentScreen('overview');
+            navigate('overview', { replace: true });
         } catch (error) {
             console.error("生成失敗", error);
             toast.error("抱歉，生成課表時發生錯誤，請稍後再試。");
-            setCurrentScreen(user ? 'dashboard' : 'home');
+            navigate(user ? 'dashboard' : 'home', { replace: true });
         }
     };
 
@@ -231,7 +238,7 @@ const AppContent = () => {
             setCompletedExerciseCount(completedIndex);
             setActualDurationSeconds(elapsedSeconds);
             // 導向完成頁面，讓用戶看到已完成的訓練數據
-            setCurrentScreen('completed');
+            navigate('completed', { replace: true });
         }
     };
 
@@ -239,54 +246,60 @@ const AppContent = () => {
     const handleWorkoutFinish = (completedIndex: number, elapsedSeconds: number) => {
         setCompletedExerciseCount(completedIndex);
         setActualDurationSeconds(elapsedSeconds);
-        setCurrentScreen('completed');
+        navigate('completed', { replace: true });
     };
 
     // 登入成功後導向儀表板
     const handleLoginSuccess = () => {
-        setCurrentScreen('dashboard');
+        navigate('dashboard', { replace: true });
     };
 
     // 處理完成訓練後的導向
     const handleWorkoutComplete = () => {
         // 根據 PRD: 若為會員，導向儀表板
-        setCurrentScreen(user ? 'dashboard' : 'history');
+        navigate(user ? 'dashboard' : 'history');
     };
+
+    // 通用返回處理函數
+    const handleBack = useCallback((fallbackScreen?: AppScreen) => {
+        const backScreen = getBackScreen(currentScreen, !!user);
+        navigate(backScreen || fallbackScreen || 'home');
+    }, [currentScreen, user, navigate]);
 
     return (
         <div className="min-h-screen bg-background flex flex-col font-sans">
             {currentScreen !== 'workout' && (
                 <Header
-                    onProfileClick={() => setCurrentScreen('profile')}
-                    onLoginClick={() => setCurrentScreen('login')}
-                    onDashboardClick={() => setCurrentScreen('dashboard')}
-                    onHomeClick={() => setCurrentScreen('home')}
+                    onProfileClick={() => navigate('profile')}
+                    onLoginClick={() => navigate('login')}
+                    onDashboardClick={() => navigate('dashboard')}
+                    onHomeClick={() => navigate('home')}
                 />
             )}
 
             <main className={`flex-1 w-full ${currentScreen !== 'workout' ? 'container mx-auto max-w-5xl p-4' : ''}`}>
                 {currentScreen === 'home' && (
                     <HomeScreen
-                        onStart={() => setCurrentScreen('setup')}
-                        onLogin={() => setCurrentScreen('login')}
+                        onStart={() => navigate('setup')}
+                        onLogin={() => navigate('login')}
                     />
                 )}
 
                 {currentScreen === 'dashboard' && (
                     <DashboardScreen
-                        onStartWorkout={() => setCurrentScreen('setup')}
-                        onViewHistory={() => setCurrentScreen('history')}
-                        onViewProfile={() => setCurrentScreen('profile')}
+                        onStartWorkout={() => navigate('setup')}
+                        onViewHistory={() => navigate('history')}
+                        onViewProfile={() => navigate('profile')}
                     />
                 )}
 
                 {currentScreen === 'login' && (
                     <LoginScreen
                         onSuccess={handleLoginSuccess}
-                        onSwitchToRegister={() => setCurrentScreen('register')}
+                        onSwitchToRegister={() => navigate('register')}
                         onContinueAsGuest={() => {
                             enterGuestMode();
-                            setCurrentScreen('setup');
+                            navigate('setup');
                         }}
                     />
                 )}
@@ -294,28 +307,29 @@ const AppContent = () => {
                 {currentScreen === 'register' && (
                     <RegisterScreen
                         onSuccess={handleLoginSuccess}
-                        onSwitchToLogin={() => setCurrentScreen('login')}
+                        onSwitchToLogin={() => navigate('login')}
                     />
                 )}
 
                 {currentScreen === 'profile' && (
                     <ProfileScreen 
-                        onBack={() => setCurrentScreen(user ? 'dashboard' : 'home')}
-                        onHistoryClick={() => setCurrentScreen('history')}
+                        onBack={() => handleBack()}
+                        onHistoryClick={() => navigate('history')}
+                        onLogout={() => navigate('home', { replace: true })}
                     />
                 )}
 
                 {currentScreen === 'history' && (
                     <HistoryScreen
-                        onBack={() => setCurrentScreen(user ? 'dashboard' : 'profile')}
-                        onStartWorkout={() => setCurrentScreen('setup')}
+                        onBack={() => handleBack()}
+                        onStartWorkout={() => navigate('setup')}
                     />
                 )}
 
                 {currentScreen === 'setup' && (
                     <SetupScreen
                         onComplete={handleSetupComplete}
-                        onBack={() => setCurrentScreen(user ? 'dashboard' : 'home')}
+                        onBack={() => handleBack()}
                     />
                 )}
 
@@ -329,9 +343,9 @@ const AppContent = () => {
                         preferences={preferences}
                         onStart={() => {
                             setWorkoutStartedAt(new Date().toISOString());
-                            setCurrentScreen('workout');
+                            navigate('workout', { replace: true });
                         }}
-                        onBack={() => setCurrentScreen('setup')}
+                        onBack={() => navigate('setup')}
                     />
                 )}
 
@@ -350,7 +364,7 @@ const AppContent = () => {
                         preferences={preferences}
                         startedAt={workoutStartedAt || new Date().toISOString()}
                         onHome={handleWorkoutComplete}
-                        onHistory={() => setCurrentScreen('history')}
+                        onHistory={() => navigate('history')}
                         completedExerciseCount={completedExerciseCount}
                         actualDurationSeconds={actualDurationSeconds}
                     />
@@ -385,8 +399,10 @@ const AppContent = () => {
 
 export default function App() {
     return (
-        <AuthProvider>
-            <AppContent />
-        </AuthProvider>
+        <ErrorBoundary>
+            <AuthProvider>
+                <AppContent />
+            </AuthProvider>
+        </ErrorBoundary>
     );
 }
