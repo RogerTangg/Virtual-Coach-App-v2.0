@@ -55,9 +55,9 @@ export const PlanOverviewScreen: React.FC<PlanOverviewScreenProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-80px)] animate-fade-in max-w-2xl mx-auto w-full bg-gray-50/50">
+    <div className="min-h-screen animate-fade-in max-w-2xl mx-auto w-full bg-gray-50/50 pb-28">
       {/* 頂部導航與標題 */}
-      <div className="flex-shrink-0 mb-4 pt-2 space-y-4 px-1">
+      <div className="sticky top-0 z-20 bg-gray-50/95 backdrop-blur-sm mb-4 pt-2 pb-2 space-y-4 px-1">
         <div className="flex items-center gap-2 text-brand-gray cursor-pointer hover:text-brand-dark transition-colors" onClick={onBack}>
           <ChevronLeft size={20} />
           <span className="text-sm font-medium">重新設定</span>
@@ -76,7 +76,7 @@ export const PlanOverviewScreen: React.FC<PlanOverviewScreenProps> = ({
       </div>
 
       {/* 課表清單 (Accordion Style) */}
-      <div className="flex-1 overflow-y-auto px-1 pb-24 space-y-3 no-scrollbar">
+      <div className="px-1 space-y-3">
         {exercisesWithRest.map((item, idx) => {
           const isExpanded = expandedIndex === idx;
           const { difficulty, type } = getTagsInfo(item.exercise?.tags);
@@ -167,37 +167,43 @@ export const PlanOverviewScreen: React.FC<PlanOverviewScreenProps> = ({
                 </div>
               </div>
 
-              {/* 展開區域 (詳細資訊) */}
+              {/* 展開區域 (詳細資訊) - 使用 grid 動畫實現更流暢的展開效果 */}
               <div 
                 className={`
-                  bg-brand-light/10 border-t border-brand-light/30 transition-all duration-300 ease-in-out
-                  ${isExpanded ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'}
+                  grid transition-all duration-300 ease-out
+                  ${isExpanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}
                 `}
               >
-                <div className="p-5 space-y-4">
-                  {/* 說明 */}
-                  <div className="space-y-2">
-                    <h4 className="text-xs font-bold text-brand-dark uppercase tracking-wider flex items-center gap-1">
-                      <List size={12} /> 運動說明
-                    </h4>
-                    <p className="text-sm text-gray-700 leading-relaxed">
-                      {item.exercise?.description}
-                    </p>
-                  </div>
-
-                  {/* 目標與部位 */}
-                  <div className="grid grid-cols-2 gap-4 pt-2">
-                    <div>
-                      <h4 className="text-xs font-bold text-brand-dark uppercase tracking-wider flex items-center gap-1 mb-1">
-                        <Layers size={12} /> 目標肌群
+                <div className="overflow-hidden">
+                  <div className={`
+                    bg-brand-light/10 border-t border-brand-light/30 p-5 space-y-4
+                    transition-opacity duration-200
+                    ${isExpanded ? 'opacity-100' : 'opacity-0'}
+                  `}>
+                    {/* 說明 */}
+                    <div className="space-y-2">
+                      <h4 className="text-xs font-bold text-brand-dark uppercase tracking-wider flex items-center gap-1">
+                        <List size={12} /> 運動說明
                       </h4>
-                      <p className="text-sm text-gray-600">{type}</p>
+                      <p className="text-sm text-gray-700 leading-relaxed">
+                        {item.exercise?.description}
+                      </p>
                     </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-brand-dark uppercase tracking-wider flex items-center gap-1 mb-1">
-                        <Zap size={12} /> 建議
-                      </h4>
-                      <p className="text-sm text-gray-600">保持呼吸，核心收緊</p>
+
+                    {/* 目標與部位 */}
+                    <div className="grid grid-cols-2 gap-4 pt-2">
+                      <div>
+                        <h4 className="text-xs font-bold text-brand-dark uppercase tracking-wider flex items-center gap-1 mb-1">
+                          <Layers size={12} /> 目標肌群
+                        </h4>
+                        <p className="text-sm text-gray-600">{type}</p>
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-brand-dark uppercase tracking-wider flex items-center gap-1 mb-1">
+                          <Zap size={12} /> 建議
+                        </h4>
+                        <p className="text-sm text-gray-600">保持呼吸，核心收緊</p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -208,8 +214,8 @@ export const PlanOverviewScreen: React.FC<PlanOverviewScreenProps> = ({
       </div>
 
       {/* 底部固定按鈕 */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-white via-white to-transparent z-10">
-        <div className="max-w-2xl mx-auto">
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-white via-white/95 to-white/0 z-10 pointer-events-none">
+        <div className="max-w-2xl mx-auto pointer-events-auto">
           <Button 
             onClick={onStart} 
             size="lg" 

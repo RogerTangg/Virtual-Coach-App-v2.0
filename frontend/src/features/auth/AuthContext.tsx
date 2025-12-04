@@ -179,8 +179,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         if (isInitializedRef.current) return;
         isInitializedRef.current = true;
         
-        // 🔧 修復：追蹤初始化是否完成，避免 onAuthStateChange 的競爭條件
-        let isInitCompleted = false;
+        // 🔧 修復：使用 ref 追蹤初始化狀態，避免閉包問題
+        const initStateRef = { completed: false, hasUser: false };
         
         const init = async () => {
             // 先檢查是否有驗證回調（hash 或 query params）
@@ -199,6 +199,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                     
                     if (session?.user) {
                         console.log('📦 從 localStorage 恢復 Session:', session.user.email);
+                        initStateRef.hasUser = true;
                         
                         // 檢查 Token 是否即將過期（5 分鐘內）
                         const expiresAt = session.expires_at;
@@ -220,32 +221,50 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             }
             
             // 標記初始化完成
-            isInitCompleted = true;
+            initStateRef.completed = true;
             
             // 確保 isLoading 一定會結束（防止極端情況）
             setIsLoading(false);
         };
 
-        init().catch(() => {
+        init().catch((error) => {
             // 初始化失敗也要結束 loading 狀態
-            isInitCompleted = true;
+            console.error('初始化失敗:', error);
+            initStateRef.completed = true;
             setIsLoading(false);
         });
 
         // 監聽身份驗證狀態變化（包括從其他 tab 登入、Token 刷新）
         const unsubscribe = onAuthStateChange((newUser) => {
             // 🔧 修復：使用 ref 而非 state 來檢查驗證狀態，避免閉包問題
-            if (!isVerifyingRef.current) {
-                // 🔧 修復：如果初始化尚未完成且 newUser 為 null，忽略此事件
-                // 這避免了 INITIAL_SESSION 事件在 getSession() 完成前將用戶設為 null
-                if (!isInitCompleted && newUser === null) {
-                    console.log('⏳ 初始化未完成，忽略空用戶事件');
-                    return;
-                }
-                setUser(newUser);
-                setIsGuest(newUser === null);
-                setIsLoading(false);
+            if (isVerifyingRef.current) {
+                console.log('⏳ 正在驗證中，忽略 auth 狀態變化');
+                return;
             }
+            
+            // 🔧 修復：如果初始化尚未完成且 newUser 為 null，但我們知道有用戶，忽略此事件
+            // 這避免了 INITIAL_SESSION 事件在 getSession() 完成前將用戶設為 null
+            if (!initStateRef.completed && newUser === null && initStateRef.hasUser) {
+                console.log('⏳ 初始化未完成且已有用戶，忽略空用戶事件');
+                return;
+            }
+            
+            // 🔧 修復：如果初始化未完成且沒有用戶資訊，延遲處理
+            if (!initStateRef.completed && newUser === null) {
+                console.log('⏳ 初始化未完成，延遲處理空用戶事件');
+                setTimeout(() => {
+                    if (initStateRef.completed) {
+                        setUser(newUser);
+                        setIsGuest(true);
+                        setIsLoading(false);
+                    }
+                }, 500);
+                return;
+            }
+            
+            setUser(newUser);
+            setIsGuest(newUser === null);
+            setIsLoading(false);
         });
 
         return () => {
