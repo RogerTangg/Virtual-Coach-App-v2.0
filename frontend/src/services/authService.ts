@@ -227,6 +227,9 @@ export const signIn = async (credentials: LoginCredentials): Promise<SignInResul
             };
         }
 
+        // 🔧 修復：登入成功後立即啟動 Session 刷新機制
+        startSessionRefresh();
+
         // 取得 user profile（帶 3 秒 timeout，允許失敗不阻塞登入）
         let profileData = null;
         try {

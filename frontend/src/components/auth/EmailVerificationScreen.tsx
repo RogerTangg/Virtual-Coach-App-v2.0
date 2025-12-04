@@ -78,14 +78,26 @@ export const EmailVerificationScreen: React.FC<EmailVerificationScreenProps> = (
         };
     }, [checkVerificationStatus]);
 
-    // 定期輪詢檢查驗證狀態（每 3 秒）
+    // 定期輪詢檢查驗證狀態（每 5 秒，最多 60 次 = 5 分鐘）
     useEffect(() => {
+        let pollCount = 0;
+        const maxPolls = 60; // 5 分鐘後停止輪詢
+        
         const pollInterval = setInterval(async () => {
+            pollCount++;
+            
+            // 超過最大次數則停止輪詢，避免無限請求
+            if (pollCount > maxPolls) {
+                console.log('⏹️ 驗證輪詢已達上限，停止自動檢查');
+                clearInterval(pollInterval);
+                return;
+            }
+            
             const verified = await checkVerificationStatus();
             if (verified) {
                 clearInterval(pollInterval);
             }
-        }, 3000);
+        }, 5000); // 延長至 5 秒，減少 API 呼叫
 
         return () => {
             clearInterval(pollInterval);
